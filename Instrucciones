@@ -1,0 +1,42 @@
+Inicializar Helm3:
+    
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | sudo bash
+helm repo add stable https://kubernetes-charts.storage.googleapis.com
+helm repo update
+helm pull stable/nginx-ingress
+# Descomprime, sin tocar nada, funciona:
+helm install nginx-ingress stable/nginx-ingress --namespace kube-system
+# Vamos haciendo kubectl get svc -n kube-system  para ver qué IP externa nos pone en el balanceador
+helm pull stable/jenkins
+# Descomprimimos, editamos el values y:
+# Habilitamos ingress
+# Modificamos nombre de host en las sección ingress y le metemos en "annotations" para que busque nuestro ingress controller
+
+  ingress:
+    enabled: true
+    # For Kubernetes v1.14+, use 'networking.k8s.io/v1beta1'
+    apiVersion: "extensions/v1beta1"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # Set this path to jenkinsUriPrefix above or use annotations to rewrite path
+    # path: "/jenkins"
+    # configures the hostname e.g. jenkins.example.com
+    hostName: jenkins.34.76.169.170.nip.io
+
+-------------
+
+helm install jenkins stable/jenkins -f values.yaml
+
+Ver el password de tu Jenkins (user=admin):
+kubectl get secrets jenkins -o jsonpath='{.data.jenkins-admin-password}' | base64 --decode; echo
+En Jenkis:
+- Administrar jenkis -> Configurar Sistema
+- Apartado: Images: Kubernetes Pod Template
+- Add Pod Template:
+  - Label = label pipeline en el Jenkinsfile
+  - Usage = Deja este nodo para ejecutar tareas solamente vinculadas a el
+  - Add Container:
+    - Name = nombre del contenedor en el Jenkinsfile
+    - Docker Image = library/nombre:version
